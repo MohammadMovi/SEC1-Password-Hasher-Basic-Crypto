@@ -59,6 +59,16 @@ python -m unittest discover -s test -v
 
 The tests use synthetic values defined in test code. No real password fixture files are needed.
 
+## Local security abuse tests
+
+This repository has no network service to penetration-test. It includes offline security regression tests for hostile password and hash inputs, bcrypt cost limits, and accidental CLI password output. See [SECURITY_TESTING.md](SECURITY_TESTING.md) for scope and limitations.
+
+Run them with:
+
+```bash
+python -m unittest discover -s test -p "test_security.py" -v
+```
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
