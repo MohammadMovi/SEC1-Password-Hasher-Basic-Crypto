@@ -15,6 +15,8 @@ import bcrypt
 
 
 DEFAULT_BCRYPT_ROUNDS = 12
+MIN_BCRYPT_ROUNDS = 4
+MAX_BCRYPT_ROUNDS = 16
 
 
 def _password_bytes(password: str) -> bytes:
@@ -36,8 +38,10 @@ def hash_sha512(password: str) -> str:
 def hash_bcrypt(password: str, rounds: int = DEFAULT_BCRYPT_ROUNDS) -> str:
     """Hash a password with bcrypt; the encoded result includes its salt/cost."""
     raw = _password_bytes(password)
-    if not 4 <= rounds <= 31:
-        raise ValueError("bcrypt rounds must be between 4 and 31")
+    if isinstance(rounds, bool) or not isinstance(rounds, int) or not MIN_BCRYPT_ROUNDS <= rounds <= MAX_BCRYPT_ROUNDS:
+        raise ValueError(f"bcrypt rounds must be an integer between {MIN_BCRYPT_ROUNDS} and {MAX_BCRYPT_ROUNDS}")
+    if not raw or b"\x00" in raw:
+        raise ValueError("bcrypt password must not be empty or contain a NUL byte")
     if len(raw) > 72:
         raise ValueError("bcrypt supports at most 72 password bytes")
     return bcrypt.hashpw(raw, bcrypt.gensalt(rounds=rounds)).decode("ascii")
@@ -47,6 +51,8 @@ def verify_bcrypt(password: str, encoded_hash: str) -> bool:
     """Check a password against an encoded bcrypt hash; malformed hashes fail closed."""
     raw = _password_bytes(password)
     if not isinstance(encoded_hash, str):
+        return False
+    if not raw or b"\x00" in raw or len(raw) > 72 or len(encoded_hash) != 60:
         return False
     try:
         return bcrypt.checkpw(raw, encoded_hash.encode("ascii"))
