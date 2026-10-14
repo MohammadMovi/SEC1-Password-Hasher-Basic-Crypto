@@ -1,1 +1,1 @@
-bcrypt
+bcrypt>=4.1.3,<6

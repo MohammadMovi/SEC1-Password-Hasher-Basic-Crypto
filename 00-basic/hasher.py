@@ -1,78 +1,118 @@
-import hashlib
-import bcrypt
-import sys
-import os
+"""Basic password-hashing examples.
 
-TEST_FILE_PATH = os.path.join(os.path.dirname(__file__), "..", "test","00-basic", "test_cases.txt")
+SHA-256 and SHA-512 are included only to demonstrate ordinary fast hashes.
+Use bcrypt (or a current password-hashing standard) for stored passwords.
+"""
+
+import argparse
+import getpass
+import hashlib
+import hmac
+import sys
+import warnings
+
+import bcrypt
+
+
+DEFAULT_BCRYPT_ROUNDS = 12
+
+
+def _password_bytes(password: str) -> bytes:
+    if not isinstance(password, str):
+        raise TypeError("password must be a string")
+    return password.encode("utf-8")
+
 
 def hash_sha256(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Return a fast SHA-256 digest for demonstrations, not password storage."""
+    return hashlib.sha256(_password_bytes(password)).hexdigest()
 
 
 def hash_sha512(password: str) -> str:
-    return hashlib.sha512(password.encode()).hexdigest()
+    """Return a fast SHA-512 digest for demonstrations, not password storage."""
+    return hashlib.sha512(_password_bytes(password)).hexdigest()
 
-def hash_bcrypt(password: str) -> str:
-    salt = bcrypt.gensalt()
-    return bcrypt.hashpw(password.encode(), salt).decode()
 
-def verify_bcrypt(password: str, hashed_password: str) -> bool:
-    if isinstance(hashed_password, str):
-        hashed_password = hashed_password.encode()
-    return bcrypt.checkpw(password.encode(), hashed_password)
+def hash_bcrypt(password: str, rounds: int = DEFAULT_BCRYPT_ROUNDS) -> str:
+    """Hash a password with bcrypt; the encoded result includes its salt/cost."""
+    raw = _password_bytes(password)
+    if not 4 <= rounds <= 31:
+        raise ValueError("bcrypt rounds must be between 4 and 31")
+    if len(raw) > 72:
+        raise ValueError("bcrypt supports at most 72 password bytes")
+    return bcrypt.hashpw(raw, bcrypt.gensalt(rounds=rounds)).decode("ascii")
 
-def run_test_mode(algorithm: str):
-    print(f"🔍 Running test mode with {algorithm.upper()}...\n")
-    if not os.path.exists(TEST_FILE_PATH):
-        print("❌ Test file not found!")
-        return
-    with open(TEST_FILE_PATH, "r", encoding="utf-8") as f:
-        passwords = [line.strip() for line in f if line.strip()]    
-    for pwd in passwords:
-        if algorithm == "sha256":
-            h = hash_sha256(pwd)
-        elif algorithm == "sha512":
-            h = hash_sha512(pwd)
-        elif algorithm == "bcrypt":
-            h = hash_bcrypt(pwd)
+
+def verify_bcrypt(password: str, encoded_hash: str) -> bool:
+    """Check a password against an encoded bcrypt hash; malformed hashes fail closed."""
+    raw = _password_bytes(password)
+    if not isinstance(encoded_hash, str):
+        return False
+    try:
+        return bcrypt.checkpw(raw, encoded_hash.encode("ascii"))
+    except (ValueError, TypeError, UnicodeEncodeError):
+        return False
+
+
+def verify_sha256(password: str, encoded_hash: str) -> bool:
+    """Verify a demo-only SHA-256 digest using a constant-time comparison."""
+    if not isinstance(encoded_hash, str):
+        return False
+    return hmac.compare_digest(hash_sha256(password), encoded_hash.lower())
+
+
+def verify_sha512(password: str, encoded_hash: str) -> bool:
+    """Verify a demo-only SHA-512 digest using a constant-time comparison."""
+    if not isinstance(encoded_hash, str):
+        return False
+    return hmac.compare_digest(hash_sha512(password), encoded_hash.lower())
+
+
+def _prompt_password(prompt: str) -> str:
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", getpass.GetPassWarning)
+            password = getpass.getpass(prompt)
+    except getpass.GetPassWarning as exc:
+        raise RuntimeError("This terminal cannot hide password input.") from exc
+    if not password:
+        raise ValueError("Password must not be empty.")
+    return password
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Educational password hashing examples")
+    parser.add_argument(
+        "--algorithm",
+        choices=("bcrypt", "sha256", "sha512"),
+        default="bcrypt",
+        help="bcrypt is the recommended option; SHA is for demonstration only",
+    )
+    args = parser.parse_args(argv)
+
+    if args.algorithm != "bcrypt":
+        print("Warning: raw SHA hashes are fast and unsafe for password storage.")
+    try:
+        password = _prompt_password("Password: ")
+        if args.algorithm == "bcrypt":
+            encoded = hash_bcrypt(password)
+            print(f"bcrypt hash: {encoded}")
+            confirmation = _prompt_password("Re-enter password to verify: ")
+            print("Match." if verify_bcrypt(confirmation, encoded) else "No match.")
         else:
-            print(f"❌ Unknown algorithm: {algorithm}")
-            return        
-        
-        print(f"{pwd} → {algorithm.upper()} → {h}\n")
+            encoded = hash_sha256(password) if args.algorithm == "sha256" else hash_sha512(password)
+            print(f"{args.algorithm} digest (demo only): {encoded}")
+    except (EOFError, KeyboardInterrupt):
+        print("\nCancelled.", file=sys.stderr)
+        return 130
+    except (ValueError, TypeError) as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+    except RuntimeError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        return 2
+    return 0
 
 
-
-def main():
-    if len(sys.argv) == 3 and sys.argv[1] == "--test":
-        run_test_mode(sys.argv[2].lower())
-        return    
-    print("🔐 Password Hasher (Basic Crypto)")
-    print("Select hashing algorithm:")
-    print("1️⃣  SHA256")
-    print("2️⃣  SHA512")
-    print("3️⃣  bcrypt (with salt + verification)")
-    
-    choice = input("Your choice (1/2/3): ").strip()
-    password = input("Enter password: ").strip()
-
-    if choice == "1":
-        result = hash_sha256(password)
-        print(f"\n🔒 SHA256 Hash:\n{result}")
-    elif choice == "2":
-        result = hash_sha512(password)
-        print(f"\n🔒 SHA512 Hash:\n{result}")
-    elif choice == "3":
-        hashed = hash_bcrypt(password)
-        print(f"\n🔒 bcrypt Hash:\n{hashed}")
-        
-        check = input("\nEnter password again to verify: ").strip()
-        if verify_bcrypt(check, hashed):
-            print("✅ Match!")
-        else:
-            print("❌ Not a match!")
-    else:
-        print("❗ Invalid choice. Please select 1, 2, or 3.")
-    
 if __name__ == "__main__":
-    main()        
+    raise SystemExit(main())

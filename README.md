@@ -1,96 +1,64 @@
+# SEC1 — Password Hashing Basics
 
-## ✅ `README.md` (in project root)
+A small Python learning project that compares ordinary cryptographic hashes with a password-hashing function. It contains a procedural example (`00-basic/`), a modular API and CLI (`01-pro/`), and automated tests (`test/`).
 
-# 🔐 SEC1 – Password Hasher (Basic Crypto)
+## What's in this repository
 
-Welcome to the first project in my **Cybersecurity Learning Journey**.  
-This repository is part of a growing series of open-source tools and labs, designed to learn, test, and demonstrate real-world security concepts.
-
----
-
-## 🧠 What Is This?
-
-This repository contains multiple versions of a **Password Hashing Tool** built in Python:
-
-| Folder         | Description                                             |
-|----------------|---------------------------------------------------------|
-| `00-basic/`    | Basic implementation using hashlib and bcrypt.         |
-| `01-pro/`      | A more structured and modular version of the tool.     |
-| `02-reverse/`  | Reversing and cracking experiments (rainbow tables).   |
-| `test/`        | Test inputs used in both basic and pro versions.       |
-| `screenshots/` | Visual previews and example results.                   |
-
----
-
-## 📌 Project Goal
-
-- Understand **hashing** vs **encryption**
-- Learn about **SHA256, SHA512, and bcrypt**
-- Explore **password salting**, **rainbow tables**, and attack surfaces
-- Build clean and modular code with Python
-
----
-
-## 🛠 Tech Stack
-
-- Python 3.10+
-- `hashlib` (standard library)
-- `bcrypt` (for secure hashing)
-
----
-
-## 🚀 How to Run
-
-Navigate to any version and run the script:
-
-```bash
-cd 00-basic
-python hasher.py
-````
-
-Or install the dependencies first:
-
-```bash
-pip install -r requirements.txt
+```text
+00-basic/       Procedural API and interactive CLI
+01-pro/         HashManager API and interactive CLI
+test/           unittest suite using synthetic example values
 ```
 
----
+The repository does not currently contain `02-reverse/` or `screenshots/`; those folders are not part of the project or its setup instructions.
 
-## 🧪 Future Projects in the Series
+## Security guidance
 
-| Step | Project Title        | Focus Area              |
-| ---- | -------------------- | ----------------------- |
-| SEC1 | Password Hasher      | Basic Crypto, Hashing   |
-| SEC2 | Port Scanner         | Networking, TCP         |
-| SEC3 | Web Form Brute Force | HTTP, Attack Simulation |
-| SEC4 | Keylogger            | System Security         |
-| ...  | ...                  | ...                     |
+- **Use bcrypt for password storage examples.** It generates a random salt for every hash and stores the salt and cost in the encoded hash. Save that complete encoded string; do not generate or store a separate salt.
+- **SHA-256 and SHA-512 here are demonstrations only.** They are deliberately fast and unsuitable for password storage. Salting a fast hash does not make it an appropriate password-hashing scheme.
+- This is educational code, not a complete authentication system. A real service should use a maintained password-hashing library and current deployment guidance, support rehashing when parameters change, protect its database and transport, and add account-level controls.
+- bcrypt accepts at most 72 UTF-8 bytes. This project rejects longer inputs rather than silently truncating them. Choose a different standard password-hashing scheme if your application needs longer passwords.
+- CLI passwords are read with Python's `getpass` and are not printed or saved. Do not put real passwords in command arguments, test fixtures, logs, or screenshots.
+- There are no reverse/cracking experiments in this repository. Any future exercise in that area must use synthetic data offline; this project does not include keylogging or account-attack functionality.
 
----
+## Requirements
 
-## 📷 Screenshots
+- Python 3.10 or newer
+- `bcrypt` (see each version's `requirements.txt`)
 
-See `screenshots/` folder for CLI output and demo images.
+Create and activate a virtual environment, then install the dependency:
 
----
+```bash
+python -m venv .venv
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r 00-basic/requirements.txt
+```
 
-## 🎓 Who Should Use This?
+## Run a CLI
 
-* Beginner security learners 🧑‍💻
-* Python developers interested in InfoSec 🐍
-* Students building a personal cybersecurity portfolio
+From the repository root:
 
----
+```bash
+python 00-basic/hasher.py
+python 00-basic/hasher.py --algorithm bcrypt
+python 01-pro/main.py
+python 00-basic/hasher.py --algorithm sha256
+python 01-pro/main.py --algorithm sha512
+```
 
-## 📄 License
+bcrypt is the default. The optional `--algorithm sha256` and `--algorithm sha512` choices print a warning and are for learning only. Password input is hidden; bcrypt mode asks for a second hidden entry to demonstrate verification.
 
-MIT License – feel free to fork and build your own versions.
+## Run the automated tests
 
----
+From the repository root, after installing bcrypt:
 
-## 🌍 Connect
+```bash
+python -m unittest discover -s test -v
+```
 
-Project by **Mohammad H. (VDTeam)**
-Follow along the journey: `#SEC-Series` 🚀
+The tests use synthetic values defined in test code. No real password fixture files are needed.
 
+## License
 
+MIT. See [LICENSE](LICENSE).
